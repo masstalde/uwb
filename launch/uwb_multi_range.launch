@@ -1,6 +1,6 @@
 <launch>
   <arg name="no_serial_link" default="false" />
-  <arg name="show_plots" default="false" />
+  <arg name="show_plots" default="true" />
   <arg name="load_params" default="true" />
   <arg name="params_name" default="params.yaml" />
   <arg name="params_file" default="$(find uwb)/config/$(arg params_name)" />

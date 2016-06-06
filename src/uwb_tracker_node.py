@@ -194,7 +194,7 @@ class UWBTracker(object):
             # squared distance by position
             hs_to_x = 2 * position - 2 * offset
             # distance by squared distance
-            h_to_hs = 1 / (2 * np.sqrt(h[j]))
+            h_to_hs = 1 / (2 * h[j])
             # distance by position
             h_to_x = h_to_hs[0] * hs_to_x
             H[j, 0:3] = h_to_x[:, 0]

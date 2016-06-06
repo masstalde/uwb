@@ -1,4 +1,6 @@
 .idea/
 .spyderproject
 *.pyc
-
+*.cproject
+*.project
+*.*~
