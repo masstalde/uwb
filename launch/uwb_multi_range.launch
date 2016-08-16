@@ -1,12 +1,14 @@
 <launch>
   <arg name="no_serial_link" default="false" />
   <arg name="show_plots" default="true" />
+  <arg name="agent_number" default="2" />
   <arg name="load_params" default="true" />
-  <arg name="params_name" default="params.yaml" />
+  <arg name="params_name" default="config4.yaml" />
   <arg name="params_file" default="$(find uwb)/config/$(arg params_name)" />
   <include file="$(find uwb)/launch/uwb_serial.launch" unless="$(arg no_serial_link)" />
   <node name="uwb_multi_range_node" pkg="uwb" type="uwb_multi_range_node.py" output="screen">
     <rosparam command="load" file="$(arg params_file)" if="$(arg load_params)" />
     <param name="show_plots" value="$(arg show_plots)" />
+    <param name="agent_number" value="$(arg agent_number)" />
   </node>
 </launch>

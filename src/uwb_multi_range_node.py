@@ -72,11 +72,20 @@ class UWBMultiRange(object):
         if show_plots:
             self._setup_plots()
 
+	if not self.agent_number==0:
+	    self.publisher_string1 = uwb_multi_range_with_offsets_topic + '{}{}'.format(self.agent_number, (self.agent_number%3)+1)
+
+	    self.publisher_string2 = uwb_multi_range_with_offsets_topic + '{}{}'.format(self.agent_number, ((self.agent_number%3)+2) % 3)
+
         # ROS Publishers
         self.uwb_pub = rospy.Publisher(uwb_multi_range_topic, uwb.msg.UWBMultiRange, queue_size=1)
         self.uwb_raw_pub = rospy.Publisher(uwb_multi_range_raw_topic, uwb.msg.UWBMultiRange, queue_size=1)
-        self.uwb_with_offsets_pub = rospy.Publisher(uwb_multi_range_with_offsets_topic,
+
+        self.uwb_with_offsets_pub1 = rospy.Publisher(self.publisher_string1,
                                                     uwb.msg.UWBMultiRangeWithOffsets, queue_size=1)
+        self.uwb_with_offsets_pub2 = rospy.Publisher(self.publisher_string2,
+                                                    uwb.msg.UWBMultiRangeWithOffsets, queue_size=1)
+
         self.uwb_timestamps_sub = rospy.Subscriber(uwb_timestamps_topic, uwb.msg.UWBMultiRangeTimestamps,
                                                    self.handle_timestamps_message)
 
@@ -99,6 +108,9 @@ class UWBMultiRange(object):
     def _read_unit_offsets(self):
         if not rospy.has_param('~num_of_units'):
             rospy.logwarn("No unit offset parameters found!")
+	if not rospy.has_param('~agent_number'):
+            rospy.logwarn("No agent number parameter found!")
+    	self.agent_number = rospy.get_param('~agent_number', 0)	
         num_of_units = rospy.get_param('~num_of_units', 0)
         self._unit_offsets = np.zeros((num_of_units, 3))
         self._unit_coefficients = np.zeros((num_of_units, 2))
@@ -130,7 +142,7 @@ class UWBMultiRange(object):
             ros_msg.ranges = ranges
             self.uwb_pub.publish(ros_msg)
 
-        if self.uwb_with_offsets_pub.get_num_connections() > 0:
+        if self.uwb_with_offsets_pub1.get_num_connections() > 0:
             ros_msg = uwb.msg.UWBMultiRangeWithOffsets()
             ros_msg.header.stamp = rospy.Time.now()
             ros_msg.num_of_units = multi_range_raw_msg.num_of_units
@@ -146,7 +158,11 @@ class UWBMultiRange(object):
                 range_msg.offset.y = self._unit_offsets[i, 1]
                 range_msg.offset.z = self._unit_offsets[i, 2]
                 ros_msg.ranges.append(range_msg)
-            self.uwb_with_offsets_pub.publish(ros_msg)
+
+	    if self.publisher_string1.endswith(str(ros_msg.remote_address)):
+                self.uwb_with_offsets_pub1.publish(ros_msg)
+	    elif self.publisher_string2.endswith(str(ros_msg.remote_address)):
+                self.uwb_with_offsets_pub2.publish(ros_msg)
 
         if self.uwb_raw_pub.get_num_connections() > 0:
             # Compute raw (without rigid configuration model) time-of-flight and ranges from timestamps measurements
