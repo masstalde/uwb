@@ -51,7 +51,7 @@ class UWBTracker(object):
         self.ikf_outlier_counts = {}
         self.outlier_thresholds = {}
 
-        rospy.loginfo("Receiving raw multi-range messages from: {}".format(self.uwb_multi_range_topic))
+        rospy.loginfo("Receiving multi-range-with-offsets messages from: {}".format(self.uwb_multi_range_topic))
         rospy.loginfo("Publishing tracker messages to {}".format(self.uwb_tracker_topic))
         rospy.loginfo("Publishing tracker transform as {} -> {}".format(self.tracker_frame, self.target_frame))
 
@@ -66,7 +66,7 @@ class UWBTracker(object):
     def _read_configuration(self):
         """Initialize configuration from ROS parameters.
         """
-        self.uwb_multi_range_topic = rospy.get_param('~multi_range_raw_topic', '/uwb/multi_range_with_offsets')
+        self.uwb_multi_range_topic = rospy.get_param('~multi_range_with_offsets_topic', '/uwb/multi_range_with_offsets')
         self.uwb_tracker_topic = rospy.get_param('~tracker_topic', '/uwb/tracker')
         self.tracker_frame = rospy.get_param('~tracker_frame', 'uwb')
         self.target_frame = rospy.get_param('~target_frame', 'target')

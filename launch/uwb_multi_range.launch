@@ -1,14 +1,24 @@
 <launch>
   <arg name="no_serial_link" default="false" />
-  <arg name="show_plots" default="true" />
-  <arg name="agent_number" default="2" />
+  <arg name="show_plots" default="false" />
+  <arg name="show_rate" default="false" />
   <arg name="load_params" default="true" />
   <arg name="params_name" default="config4.yaml" />
   <arg name="params_file" default="$(find uwb)/config/$(arg params_name)" />
-  <include file="$(find uwb)/launch/uwb_serial.launch" unless="$(arg no_serial_link)" />
-  <node name="uwb_multi_range_node" pkg="uwb" type="uwb_multi_range_node.py" output="screen">
+  <arg name="tracker_number" default="2" />
+  <arg name="namespace" default="swarm" />
+
+  <include file="$(find uwb)/launch/uwb_serial.launch" unless="$(arg no_serial_link)"> 
+    <arg name="tracker_number" value="$(arg tracker_number)" />
+  </include>
+
+  <node name="uwb_multi_range_$(arg tracker_number)" pkg="uwb" type="uwb_multi_range_node.py" output="screen">
     <rosparam command="load" file="$(arg params_file)" if="$(arg load_params)" />
     <param name="show_plots" value="$(arg show_plots)" />
-    <param name="agent_number" value="$(arg agent_number)" />
+    <param name="show_rate" value="$(arg show_rate)" />
+    <param name="timestamps_topic" value="/uwb/timestamps_$(arg tracker_number)" />
+    <param name="multi_range_with_offsets_topic" value="/uwb/multi_range_with_offsets_$(arg tracker_number)" />
+    <param name="tracker_number" value="$(arg tracker_number)" />    
   </node>
+
 </launch>

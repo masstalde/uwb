@@ -3,10 +3,17 @@
   <arg name="ignore_z_position" default="true" />
   <arg name="tracker_frame" default="vicon/UWB_Solo/UWB_Solo" />
   <arg name="target_frame" default="uwb/target" />
-  <include file="$(find uwb)/launch/uwb_multi_range.launch" unless="$(arg no_multi_range)" />
-  <node name="uwb_tracker_node" pkg="uwb" type="uwb_tracker_node.py" output="screen">
+  <arg name="tracker_number" default="2" />
+
+  <include file="$(find uwb)/launch/uwb_multi_range.launch" unless="$(arg no_multi_range)">
+    <arg name="tracker_number" value="$(arg tracker_number)" />
+  </include>
+
+  <node name="uwb_tracker_$(arg tracker_number)" pkg="uwb" type="uwb_tracker_node.py" output="screen">
     <param name="ignore_z_position" value="$(arg ignore_z_position)" />
     <param name="tracker_frame" value="$(arg tracker_frame)" />
     <param name="target_frame" value="$(arg target_frame)" />
+    <param name="multi_range_with_offsets_topic" value="/uwb/multi_range_with_offsets_$(arg tracker_number)" />
   </node>
+
 </launch>

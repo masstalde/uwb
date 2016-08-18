@@ -1,8 +1,12 @@
 <launch>
     <arg name="serial_port" default="/dev/ttyACM0" />
     <arg name="baud_rate" default="115200" />
-    <node pkg="uwb" type="uwb_serial_node" name="uwb_serial" output="screen">
+    <arg name="tracker_number" default="2" />
+    
+    <node pkg="uwb" type="uwb_serial_node" name="uwb_serial_$(arg tracker_number)" output="screen">
         <param name="serial_port" value="$(arg serial_port)" />
         <param name="baud_rate" value="$(arg baud_rate)" />
+        <param name="topic" value="/uwb/timestamps_$(arg tracker_number)" />
     </node>
+    
 </launch>

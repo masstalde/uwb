@@ -41,29 +41,25 @@ class UWBMultiRange(object):
         rospy.loginfo("Publishing multi-range-with-offsets messages to {}".format(
             self.uwb_multi_range_with_offsets_topic))
 
-	if not self.agent_number==0:
-	    self.publisher_string1 = uwb_multi_range_with_offsets_topic + '{}{}'.format(self.agent_number, (self.agent_number%3)+1)
-
-	    self.publisher_string2 = uwb_multi_range_with_offsets_topic + '{}{}'.format(self.agent_number, ((self.agent_number%3)+2) % 3)
 
         # ROS Publishers
-        self.uwb_pub = rospy.Publisher(uwb_multi_range_topic, uwb.msg.UWBMultiRange, queue_size=1)
-        self.uwb_raw_pub = rospy.Publisher(uwb_multi_range_raw_topic, uwb.msg.UWBMultiRange, queue_size=1)
+        self.uwb_pub = rospy.Publisher(self.uwb_multi_range_topic, uwb.msg.UWBMultiRange, queue_size=1)
+        self.uwb_raw_pub = rospy.Publisher(self.uwb_multi_range_raw_topic, uwb.msg.UWBMultiRange, queue_size=1)
 
-        self.uwb_with_offsets_pub1 = rospy.Publisher(self.publisher_string1,
-                                                    uwb.msg.UWBMultiRangeWithOffsets, queue_size=1)
-        self.uwb_with_offsets_pub2 = rospy.Publisher(self.publisher_string2,
+        self.uwb_with_offsets_pub = rospy.Publisher(self.uwb_multi_range_with_offsets_topic,
                                                     uwb.msg.UWBMultiRangeWithOffsets, queue_size=1)
 
-        self.uwb_timestamps_sub = rospy.Subscriber(uwb_timestamps_topic, uwb.msg.UWBMultiRangeTimestamps, self.handle_timestamps_message)
-
-        # Variables for rate display
-        self.msg_count = 0
-        self.last_now = rospy.get_time()
+        self.uwb_timestamps_sub = rospy.Subscriber(self.uwb_timestamps_topic, uwb.msg.UWBMultiRangeTimestamps, self.handle_timestamps_message)
+	
+	if self.show_rate:
+		# Variables for rate display
+		self.msg_count = 0
+		self.last_now = rospy.get_time()
 
     def _read_configuration(self):
         self._read_unit_offsets()
         self.show_plots = rospy.get_param('~show_plots', True)
+        self.show_rate = rospy.get_param('~show_rate', True)
         self.show_slave_clock_offset = rospy.get_param('~show_slave_clock_offset', False)
         self.show_slave_clock_skew = rospy.get_param('~show_slave_clock_skew', False)
         self.uwb_timestamps_topic = rospy.get_param('~timestamps_topic', '/uwb/timestamps')
@@ -74,10 +70,7 @@ class UWBMultiRange(object):
 
     def _read_unit_offsets(self):
         if not rospy.has_param('~num_of_units'):
-            rospy.logwarn("No unit offset parameters found!")
-	if not rospy.has_param('~agent_number'):
-            rospy.logwarn("No agent number parameter found!")
-    	self.agent_number = rospy.get_param('~agent_number', 0)	
+            rospy.logwarn("No unit offset parameters found!")	
         num_of_units = rospy.get_param('~num_of_units', 0)
         self._unit_offsets = np.zeros((num_of_units, 3))
         self._unit_coefficients = np.zeros((num_of_units, 2))
@@ -90,8 +83,13 @@ class UWBMultiRange(object):
             p0 = unit_params['p0']
             p1 = unit_params['p1']
             self._unit_coefficients[i, :] = [p0, p1]
+        if rospy.has_param('~tracker_number'):
+            tracker_number = rospy.get_param('~tracker_number')
+            master_offset = self._unit_offsets[0,:]
+            rospy.set_param('master_offset_' +str(tracker_number), { 'x': float(master_offset[0]), 'y': float(master_offset[1]) })
         rospy.loginfo("Unit offsets: {}".format(self._unit_offsets))
         rospy.loginfo("Unit coefficients: {}".format(self._unit_coefficients))
+        
 
     def _setup_plots(self):
         from gui_utils import MainWindow, PlotData
@@ -121,7 +119,7 @@ class UWBMultiRange(object):
             ros_msg.ranges = ranges
             self.uwb_pub.publish(ros_msg)
 
-        if self.uwb_with_offsets_pub1.get_num_connections() > 0:
+        if self.uwb_with_offsets_pub.get_num_connections() > 0:
             ros_msg = uwb.msg.UWBMultiRangeWithOffsets()
             ros_msg.header.stamp = rospy.Time.now()
             ros_msg.num_of_units = multi_range_raw_msg.num_of_units
@@ -138,10 +136,7 @@ class UWBMultiRange(object):
                 range_msg.offset.z = self._unit_offsets[i, 2]
                 ros_msg.ranges.append(range_msg)
 
-	    if self.publisher_string1.endswith(str(ros_msg.remote_address)):
-                self.uwb_with_offsets_pub1.publish(ros_msg)
-	    elif self.publisher_string2.endswith(str(ros_msg.remote_address)):
-                self.uwb_with_offsets_pub2.publish(ros_msg)
+            self.uwb_with_offsets_pub.publish(ros_msg)
 
         if self.uwb_raw_pub.get_num_connections() > 0:
             # Compute raw (without rigid configuration model) time-of-flight and ranges from timestamps measurements
@@ -158,19 +153,18 @@ class UWBMultiRange(object):
 
         # Optionally: Update plots
         if self.show_plots:
-            self.update_visualization(tofs, ranges, clock_offsets, clock_skews,
+		    self.update_visualization(tofs, ranges, clock_offsets, clock_skews,
                                       slave_clock_offset, slave_clock_skew)
-
-        # Increase rate-counter
-        self.msg_count += 1
-
+     
+        if self.show_rate:
         # Display rate
-        now = rospy.get_time()
-        if now - self.last_now >= self.INFO_PRINT_RATE:
-            msg_rate = self.msg_count / (now - self.last_now)
-            rospy.loginfo("Receiving UWB timestamps with rate {} Hz".format(msg_rate))
-            self.last_now = now
-            self.msg_count = 0
+        	self.msg_count += 1
+        	now = rospy.get_time()
+        	if now - self.last_now >= self.INFO_PRINT_RATE:
+		        msg_rate = self.msg_count / (now - self.last_now)
+		        rospy.loginfo("Receiving UWB timestamps with rate {} Hz".format(msg_rate))
+		        self.last_now = now
+		        self.msg_count = 0
 
     def convert_dw_timeunits_to_microseconds(self, dw_timeunits):
         return dw_timeunits * self.DW_TIMEUNITS_TO_US
