@@ -23,6 +23,7 @@ class AttitudeEst(object):
         
         def __init__(self, agent_number):
             self.agent_number = agent_number;
+            self.vectors_updated = np.array([0, 0])
             vector_to_previous = np.array([0.0, 0.0])
             vector_to_next = np.array([0.0, 0.0])
             self.vectors = np.array([vector_to_previous, vector_to_next])
@@ -68,18 +69,39 @@ class AttitudeEst(object):
         remote_address = tracker_msg.remote_address
         agent_state = tracker_msg.state
         
-        agent = self.agent_list.pop(agent_number - 1)
+        agent = self.agent_list[agent_number - 1]
         
+        #Correct the vector to point to the COG
+        #First, rotate into inertial frame
+        R = np.array([[1, 0], [0, 1]])
+        if remote_address == 3:
+            R = self.R31.dot(R)
+        elif remote_address == 2:
+            R = self.R21.dot(R)
+        #If required, rotate to respective body frame
+        if agent_number == 2:
+            R = self.R12.dot(R)
+        elif agent_number == 3:
+            R = self.R13.dot(R)
+        
+        agent_state -= R.dot(agent.master_module_offset)
+        
+        rospy.loginfo('Corrected Vector r{}{}'.format(str(agent_number), str(remote_address)))
+        rospy.loginfo(agent_state)
+                
         if remote_address == (agent_number%self.number_of_agents + 1):
             agent.vectors[1] = agent_state[0:2]
+            agent.vectors_updated[1] = 1
         if (remote_address%self.number_of_agents) == ((agent_number - 1)%self.number_of_agents):
             agent.vectors[0] = agent_state[0:2]
+            agent.vectors_updated[0] = 1
             
-        self.agent_list.insert(agent_number-1, agent)
         
         
         if self.all_agents_init:
-            self.perform_kabsch()
+            if agent.vectors_updated.all():
+                self.perform_kabsch()
+                agent.vectors_updated = np.array([0, 0])
         else:
             self.all_agents_init = 1
             for ag in self.agent_list:
