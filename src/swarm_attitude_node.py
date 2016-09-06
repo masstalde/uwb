@@ -44,8 +44,13 @@ class AttitudeEst(object):
         for i in range(1, self.number_of_agents + 1):
             agent = self.Agent(i)
             
-            #TEST
-            agent.master_module_offset = np.array([-0.2, 0.2])
+            #Get the master_module_offsets if required
+            if self.use_master_offset:
+                module_string_x = '/master_offset_{}/x'.format(i)
+                module_string_y = '/master_offset_{}/y'.format(i)
+                module_offset_x = rospy.get_param(module_string_x, -0.2)
+                module_offset_y = rospy.get_param(module_string_y, 0.2)                    
+                agent.master_module_offset = np.array([module_offset_x, module_offset_y])
             
             self.agent_list.append(agent)   
             # ROS publishers
@@ -62,13 +67,13 @@ class AttitudeEst(object):
         self.number_of_agents = rospy.get_param('~number_of_agents', 3)
         self.uwb_tracker_topic = rospy.get_param('~tracker_topic', '/uwb/tracker')
         self.agents_topic_templ = rospy.get_param('~agents_topic_templ', '/z*vec')
-
-
+        self.use_master_offset = rospy.get_param('~use_master_offset', True)
+        
     def handle_tracker_message(self, tracker_msg):
         agent_number = tracker_msg.address
         remote_address = tracker_msg.remote_address
-        agent_state = tracker_msg.state
-        
+        agent_state = tracker_msg.state[0:2]
+                
         agent = self.agent_list[agent_number - 1]
         
         #Correct the vector to point to the COG
@@ -96,8 +101,6 @@ class AttitudeEst(object):
             agent.vectors[0] = agent_state[0:2]
             agent.vectors_updated[0] = 1
             
-        
-        
         if self.all_agents_init:
             if agent.vectors_updated.all():
                 self.perform_kabsch()
@@ -106,9 +109,7 @@ class AttitudeEst(object):
             self.all_agents_init = 1
             for ag in self.agent_list:
                 if not ag.vectors[0].any() or not ag.vectors[1].any():
-                    self.all_agents_init = 0
-       
-               
+                    self.all_agents_init = 0               
     
     def perform_kabsch(self):
          rospy.loginfo("Performing Kabsch")
@@ -133,22 +134,30 @@ class AttitudeEst(object):
          self.R12 = inv(self.R21)
          self.R13 = inv(self.R31)
            
-
          self.publish_rotated_vectors()  
-          
-         
+                   
     def publish_rotated_vectors(self):
         z1 = (self.agent_list[0].vectors[1] - self.R21.dot(self.agent_list[1].vectors[0])) / 2
         z2 = (self.R21.dot(self.agent_list[1].vectors[1]) - self.R31.dot(self.agent_list[2].vectors[0])) / 2 
         z3 = (self.agent_list[0].vectors[0] - self.R31.dot(self.agent_list[2].vectors[1])) / 2
+                     
+        z1_msg = std_msgs.msg.Float32MultiArray()
+        z1_msg.data = np.append(z1, [0, 1])
         
-
+        z2_msg = std_msgs.msg.Float32MultiArray()
+        z2_msg.data = np.append(z2, [0, 2])
         
-        rospy.loginfo(z1)
-        rospy.loginfo(z2)
-        rospy.loginfo(z3)
-        
-     
+        z3_msg = std_msgs.msg.Float32MultiArray()
+        z3_msg.data = np.append(z3, [0, 3])
+       
+        rospy.loginfo(z1_msg.data)
+        rospy.loginfo(z2_msg.data)
+        rospy.loginfo(z3_msg.data)
+       
+        self.agent_topics[0].publish(z1_msg)
+        self.agent_topics[1].publish(z2_msg)
+        self.agent_topics[2].publish(z3_msg)
+                    
     def centroid(self, X):
         """
         Calculate the centroid from a vectorset X
@@ -211,7 +220,7 @@ class AttitudeEst(object):
 def main():
     import signal
 
-    rospy.init_node('awarm_attitude_node')
+    rospy.init_node('swarm_attitude_node')
     est = AttitudeEst()
 
     def sigint_handler(sig, _):
