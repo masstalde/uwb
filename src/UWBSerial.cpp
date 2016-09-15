@@ -23,7 +23,7 @@ UWBSerial::UWBSerial()
   std::string topic("/uwb/timestamps");
   nh_.getParam("topic", topic);
   ROS_INFO_STREAM("Publishing to " << topic);
-  timestamps_pub_ = nh_.advertise<uwb::UWBMultiRangeTimestamps>("/uwb/timestamps", 1);
+  timestamps_pub_ = nh_.advertise<uwb::UWBMultiRangeTimestamps>(topic, 1);
 
   std::string device("/dev/ttyACM0");
   int baud_rate = 115200;
