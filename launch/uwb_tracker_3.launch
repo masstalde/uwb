@@ -3,10 +3,11 @@
   <arg name="ignore_z_position" default="true" />
   <arg name="tracker_frame" default="vicon/UWB_Solo/UWB_Solo" />
   <arg name="target_frame" default="uwb/target" />
-  <arg name="tracker_number" default="2" />
+  <arg name="tracker_number" default="3" />
 
   <include file="$(find uwb)/launch/uwb_multi_range.launch" unless="$(arg no_multi_range)">
     <arg name="tracker_number" value="$(arg tracker_number)" />
+    <arg name="params_name" value="config3.yaml" />
   </include>
 
   <node name="uwb_tracker_$(arg tracker_number)" pkg="uwb" type="uwb_tracker_node.py" output="screen">

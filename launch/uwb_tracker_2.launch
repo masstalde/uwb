@@ -7,6 +7,7 @@
 
   <include file="$(find uwb)/launch/uwb_multi_range.launch" unless="$(arg no_multi_range)">
     <arg name="tracker_number" value="$(arg tracker_number)" />
+    <arg name="params_name" value="config2.yaml" />
   </include>
 
   <node name="uwb_tracker_$(arg tracker_number)" pkg="uwb" type="uwb_tracker_node.py" output="screen">
