@@ -46,11 +46,13 @@ class AttitudeEst(object):
             
             #Get the master_module_offsets if required
             if self.use_master_offset:
-                module_string_x = '/master_offset_{}/x'.format(i)
-                module_string_y = '/master_offset_{}/y'.format(i)
+                module_string_x = '/uwb_multi_range_{}/unit_0/x'.format(i)
+                module_string_y = '/uwb_multi_range_{}/unit_0/y'.format(i)
                 module_offset_x = rospy.get_param(module_string_x, -0.2)
                 module_offset_y = rospy.get_param(module_string_y, 0.2)                    
                 agent.master_module_offset = np.array([module_offset_x, module_offset_y])
+		rospy.loginfo("Module offset: ")
+		rospy.loginfo(agent.master_module_offset)
             
             self.agent_list.append(agent)   
             # ROS publishers
