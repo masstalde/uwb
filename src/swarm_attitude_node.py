@@ -93,8 +93,8 @@ class AttitudeEst(object):
         
         agent_state -= R.dot(agent.master_module_offset)
         
-        rospy.loginfo('Corrected Vector r{}{}'.format(str(agent_number), str(remote_address)))
-        rospy.loginfo(agent_state)
+        #rospy.loginfo('Corrected Vector r{}{}'.format(str(agent_number), str(remote_address)))
+        #rospy.loginfo(agent_state)
                 
         if remote_address == (agent_number%self.number_of_agents + 1):
             agent.vectors[1] = agent_state[0:2]
@@ -130,13 +130,18 @@ class AttitudeEst(object):
          Q21 -= Q21_c
          Q31 -= Q31_c
          
-         self.R21 = self.kabsch(P, Q21)
-         self.R31 = self.kabsch(P, Q31)
+         R21_m = self.kabsch(P, Q21)
+         R31_m = self.kabsch(P, Q31)
          
-         self.R12 = inv(self.R21)
-         self.R13 = inv(self.R31)
+         R12_m = inv(R21_m)
+         R13_m = inv(R31_m)
+
+	#Lowpass filter
+	K=0.3
+	self.R12 = self.R12 - K*(self.R12 - R12_m)
+	self.R13 = self.R13 - K*(self.R13 - R12_m)
            
-         self.publish_rotated_vectors()  
+        self.publish_rotated_vectors()  
                    
     def publish_rotated_vectors(self):
         z1 = (self.agent_list[0].vectors[1] - self.R21.dot(self.agent_list[1].vectors[0])) / 2

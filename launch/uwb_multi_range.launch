@@ -3,7 +3,7 @@
   <arg name="show_plots" default="false" />
   <arg name="show_rate" default="false" />
   <arg name="load_params" default="true" />
-  <arg name="params_name" default="config2.yaml" />
+  <arg name="params_name" default="config1.yaml" />
   <arg name="params_file" default="$(find uwb)/config/$(arg params_name)" />
   <arg name="tracker_number" default="2" />
   <arg name="namespace" default="swarm" />

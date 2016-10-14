@@ -72,21 +72,21 @@ class UWBMultiRange(object):
         if not rospy.has_param('~num_of_units'):
             rospy.logwarn("No unit offset parameters found!")	
         num_of_units = rospy.get_param('~num_of_units', 0)
-        self._unit_offsets = np.zeros((num_of_units, 3))
-        self._unit_coefficients = np.zeros((num_of_units, 2))
-        for i in xrange(num_of_units):
-            unit_params = rospy.get_param('~unit_{}'.format(i))
-            x = unit_params['x']
-            y = unit_params['y']
-            z = unit_params['z']
-            self._unit_offsets[i, :] = [x, y, z]
-            p0 = unit_params['p0']
-            p1 = unit_params['p1']
-            self._unit_coefficients[i, :] = [p0, p1]
-        if rospy.has_param('~tracker_number'):
-            tracker_number = rospy.get_param('~tracker_number')
-            master_offset = self._unit_offsets[0,:]
-            rospy.set_param('master_offset_' +str(tracker_number), { 'x': float(master_offset[0]), 'y': float(master_offset[1]) })
+        self._unit_offsets = np.zeros((4, num_of_units, 3))
+        self._unit_coefficients = np.zeros((4, num_of_units, 2))
+	for k in range(1,4):
+		remote = rospy.get_param('~remote_{}'.format(k), {'dummy': 0})
+		for i in xrange(num_of_units):
+		    if 'unit_{}'.format(i) not in remote:
+		        break	
+		    unit_params = remote['unit_{}'.format(i)]
+		    x = unit_params['x']
+		    y = unit_params['y']
+		    z = unit_params['z']
+		    self._unit_offsets[k,i, :] = [x, y, z]
+		    p0 = unit_params['p0']
+		    p1 = unit_params['p1']
+		    self._unit_coefficients[k,i, :] = [p0, p1]
         rospy.loginfo("Unit offsets: {}".format(self._unit_offsets))
         rospy.loginfo("Unit coefficients: {}".format(self._unit_coefficients))
         
@@ -104,9 +104,11 @@ class UWBMultiRange(object):
         self.clock_skew_plot.get_plot().addLegend()
 
     def handle_timestamps_message(self, multi_range_raw_msg):
+	remote_address = multi_range_raw_msg.remote_address
+
         # Compute time-of-flight and ranges from timestamps measurements
         tofs, ranges, clock_offsets, clock_skews, slave_clock_offset, slave_clock_skew \
-            = self.process_timestamps_measurements(multi_range_raw_msg, self._unit_coefficients)
+            = self.process_timestamps_measurements(multi_range_raw_msg, self._unit_coefficients[remote_address,:,:])
 
         # Publish multi-range message
         if self.uwb_pub.get_num_connections() > 0:
@@ -125,15 +127,15 @@ class UWBMultiRange(object):
             ros_msg.num_of_units = multi_range_raw_msg.num_of_units
             ros_msg.address = multi_range_raw_msg.address
             ros_msg.remote_address = multi_range_raw_msg.remote_address
-            if ros_msg.num_of_units != self._unit_offsets.shape[0]:
+            if ros_msg.num_of_units != self._unit_offsets.shape[1]:
                 rospy.logwarn("Number of units in timestamp message does not match number of unit offsets in parameters!")
             for i in xrange(ros_msg.num_of_units):
                 range_msg = uwb.msg.UWBRangeWithOffset()
                 range_msg.tof = tofs[i]
                 range_msg.range = ranges[i]
-                range_msg.offset.x = self._unit_offsets[i, 0]
-                range_msg.offset.y = self._unit_offsets[i, 1]
-                range_msg.offset.z = self._unit_offsets[i, 2]
+                range_msg.offset.x = self._unit_offsets[remote_address, i, 0]
+                range_msg.offset.y = self._unit_offsets[remote_address, i, 1]
+                range_msg.offset.z = self._unit_offsets[remote_address, i, 2]
                 ros_msg.ranges.append(range_msg)
 
             self.uwb_with_offsets_pub.publish(ros_msg)
@@ -175,7 +177,7 @@ class UWBMultiRange(object):
     def process_timestamps_measurements(self, uwb_multi_range_raw_msg, unit_coefficients=None):
         msg = uwb_multi_range_raw_msg
         num_of_units = msg.num_of_units
-
+	
         # Set default distances and coefficients if not specified
         if unit_coefficients is None:
             unit_coefficients = np.zeros((num_of_units, 2))

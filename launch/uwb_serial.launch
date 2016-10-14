@@ -1,5 +1,5 @@
 <launch>
-    <arg name="serial_port" default="/dev/ttyACM2" />
+    <arg name="serial_port" default="/dev/ttyACM1" />
     <arg name="baud_rate" default="115200" />
     <arg name="tracker_number" default="2" />
     
